@@ -1,0 +1,371 @@
+
+<!DOCTYPE html>
+<html data-page-optimizer-init="true" lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Client Information Form</title>
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+	<style type="text/css">:root {
+            --primary-color: #1c4e18;
+            --secondary-color: #4a5568;
+            --accent-color: #31761f;
+            --light-bg: #f7fafc;
+            --dark-bg: #2d3748;
+            --border-color: #e2e8f0;
+            --error-color: #e53e3e;
+            --progress-active: #31761f;
+            --progress-inactive: #cbd5e0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f9f9f9; color: var(--secondary-color); line-height: 1.6; }
+        .container { max-width: 800px; margin: 2rem auto; padding: 2rem; background-color: white; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+        .container::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: linear-gradient(to right, var(--primary-color), var(--accent-color)); }
+        .form-header { text-align: center; margin-bottom: 2rem; }
+        .logo-container { margin-bottom: 1.5rem; }
+        .logo { max-width: 250px; height: auto; }
+        .form-header h1 { color: var(--primary-color); font-size: 2rem; margin-bottom: 0.5rem; }
+        .form-header p { color: var(--secondary-color); }
+        .progress-container { margin-bottom: 2rem; }
+        .progress-bar { display: flex; justify-content: space-between; position: relative; margin-bottom: 1rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+        .progress-bar::before { content: ''; position: absolute; top: 50%; left: 0; transform: translateY(-50%); height: 4px; width: 100%; background-color: var(--progress-inactive); z-index: 1; }
+        .progress-fill { position: absolute; top: 50%; left: 0; transform: translateY(-50%); height: 4px; width: 0%; background-color: var(--progress-active); z-index: 2; transition: width 0.4s ease-in-out; }
+        .progress-step { width: 30px; height: 30px; background-color: var(--progress-inactive); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: relative; z-index: 3; transition: background-color 0.3s, transform 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .progress-step.active { background-color: var(--progress-active); transform: scale(1.1); box-shadow: 0 3px 8px rgba(49,118,31,0.25); }
+        .progress-labels { display: flex; justify-content: space-between; max-width: 600px; margin-left: auto; margin-right: auto; }
+        .step-label { text-align: center; font-size: 0.875rem; font-weight: 500; color: var(--secondary-color); width: 30px; }
+        .form-section { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); background-color: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .form-section h2 { color: var(--primary-color); margin-bottom: 1rem; font-size: 1.25rem; border-bottom: 2px solid var(--accent-color); padding-bottom: 0.5rem; display: inline-block; }
+        .form-row { display: flex; flex-wrap: wrap; margin: 0 -0.75rem; }
+        .form-group { flex: 1 1 calc(50% - 1.5rem); margin: 0 0.75rem 1rem; min-width: 200px; }
+        .form-group.full-width { flex-basis: calc(100% - 1.5rem); }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--primary-color); }
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 1rem; transition: border-color 0.3s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(72,187,120,0.2); }
+        textarea { resize: vertical; min-height: 100px; }
+        .radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem; }
+        .radio-option, .checkbox-option { display: flex; align-items: center; }
+        input[type="radio"], input[type="checkbox"] { width: auto; margin-right: 0.5rem; }
+        button { background-color: var(--accent-color); color: white; border: none; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.3s; margin-top: 1rem; box-shadow: 0 4px 6px rgba(49,118,31,0.2); position: relative; overflow: hidden; }
+        button:hover { background-color: #225614; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(49,118,31,0.25); }
+        button:before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: all 0.6s; }
+        button:hover:before { left: 100%; }
+        .nav-buttons { display: flex; justify-content: space-between; margin-top: 2rem; }
+        #prevBtn { background-color: #718096; }
+        #prevBtn:hover { background-color: #4a5568; }
+        .required:after { content: " *"; color: var(--error-color); }
+        .service-icons { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; margin: 1.5rem 0; }
+        .service-icon { text-align: center; width: 130px; cursor: pointer; transition: all 0.3s; border: 2px solid transparent; border-radius: 12px; padding: 1.2rem 0.5rem; background-color: #f7f9f7; box-shadow: 0 3px 10px rgba(0,0,0,0.05); }
+        .service-icon.selected { border-color: var(--accent-color); background-color: rgba(49,118,31,0.1); transform: translateY(-5px); box-shadow: 0 6px 15px rgba(49,118,31,0.15); }
+        .service-icon:hover { transform: translateY(-5px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        .service-icon i { font-size: 2.8rem; color: var(--accent-color); margin-bottom: 0.75rem; display: block; transition: all 0.3s; }
+        .service-icon:hover i { transform: scale(1.1); }
+        .service-icon span { display: block; font-size: 0.875rem; font-weight: 500; }
+        .range-slider { width: 100%; margin: 1.5rem 0; }
+        .range-slider input { width: 100%; -webkit-appearance: none; height: 10px; border-radius: 5px; background: var(--progress-inactive); outline: none; margin: 1rem 0; background: linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) 50%, var(--progress-inactive) 50%, var(--progress-inactive) 100%); }
+        .range-slider input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-color); cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 2px solid white; }
+        .range-labels { display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--secondary-color); }
+        .range-value { text-align: center; font-weight: 600; font-size: 1.25rem; color: var(--primary-color); margin-top: 0.5rem; }
+        @media (max-width: 768px) { .container { padding: 1.5rem; margin: 1rem; } .form-group { flex-basis: calc(100% - 1.5rem); } .service-icons { gap: 1rem; } .service-icon { width: 100px; } }
+	</style>
+</head>
+<body>
+<div class="container">
+<div class="form-header">
+<div class="logo-container"><img alt="Landscapes Unlimited Logo" class="logo" src="https://landscapesunlimitedmn.com/wp-content/uploads/2023/09/Landscape_LogoFC.png" /></div>
+<h1>Client Information Form</h1>
+<p>Please fill in the details below to help us serve you better</p>
+</div>
+
+<div class="progress-container">
+<div class="progress-bar">
+<div class="progress-fill" id="progressFill"></div>
+<div class="progress-step active" id="step1">1</div>
+<div class="progress-step" id="step2">2</div>
+<div class="progress-step" id="step3">3</div>
+<div class="progress-step" id="step4">4</div>
+</div>
+<div class="progress-labels">
+<div class="step-label">Location</div>
+<div class="step-label">Project</div>
+<div class="step-label">Services</div>
+<div class="step-label">Contact</div>
+</div>
+</div>
+
+<form id="clientForm">
+<!-- Section 1: Location -->
+<div class="form-section" id="section1">
+<h2>Your Location</h2>
+<div class="form-row"><div class="form-group full-width">
+<label class="required" for="zipCode">ZIP Code</label>
+<input id="zipCode" name="zipCode" required type="text" />
+<p style="margin-top: 0.5rem; font-size: 0.875rem;">We'll use this to determine if you're within our service area.</p>
+</div></div>
+<div class="form-row" style="margin-top: 1.5rem;"><div class="form-group full-width" style="background-color: #f3f8f3; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--accent-color); position: relative; overflow: hidden;">
+<div style="position: absolute; right: -15px; top: -15px; background-color: var(--accent-color); width: 80px; height: 80px; border-radius: 50%; opacity: 0.1;"></div>
+<h3 style="color: var(--primary-color); margin-bottom: 0.5rem; font-size: 1.1rem;">Special Financing Available</h3>
+<p style="margin-bottom: 1rem;">We offer 0% financing options to help you complete your dream project today.</p>
+<div class="checkbox-option"><input id="financingInfo" name="financingInfo" type="checkbox" value="yes" /> <label for="financingInfo">I'd like to receive more information about 0% financing options</label></div>
+</div></div>
+<div style="text-align: center; margin-top: 2rem;">
+<div style="display: flex; align-items: center; justify-content: center; margin: 0 auto; max-width: 200px;">
+<div style="height: 2px; flex-grow: 1; background-color: #31761f; opacity: 0.6;"></div>
+<div style="margin: 0 10px; color: #31761f; opacity: 0.8;"><i class="fas fa-leaf" style="font-size: 18px;"></i></div>
+<div style="height: 2px; flex-grow: 1; background-color: #31761f; opacity: 0.6;"></div>
+</div>
+</div>
+</div>
+
+<!-- Section 2: Project Information -->
+<div class="form-section" id="section2" style="display: none;">
+<h2>Project Information</h2>
+<div class="form-row"><div class="form-group full-width">
+<label class="required" for="projectType">Project Type</label>
+<select id="projectType" name="projectType" required>
+<option value="">Please select...</option><option value="new">New Landscape</option><option value="renovation">Landscape Renovation</option><option value="maintenance">Ongoing Maintenance</option><option value="seasonal">Seasonal Service</option><option value="other">Other</option>
+</select>
+</div></div>
+<div class="form-row"><div class="form-group full-width">
+<label class="required" for="projectDescription">Project Description</label>
+<textarea id="projectDescription" name="projectDescription" placeholder="Please describe what you're looking to achieve with your project..." required></textarea>
+</div></div>
+<div class="form-row"><div class="form-group full-width">
+<label>Approximate Yard Size</label>
+<div class="range-slider">
+<div class="range-value" id="yardSizeValue">5,000 sq ft</div>
+<input id="yardSize" max="20000" min="3000" name="yardSize" step="500" type="range" value="5000" />
+<div class="range-labels"><span>3,000 sq ft</span> <span>20,000+ sq ft</span></div>
+</div>
+</div></div>
+<div class="form-row">
+<div class="form-group"><label for="timeline">Desired Timeline</label>
+<select id="timeline" name="timeline"><option value="">Please select...</option><option value="immediate">Immediate (0-1 month)</option><option value="soon">Soon (1-3 months)</option><option value="future">Future (3-6 months)</option><option value="planning">Just Planning (6+ months)</option></select>
+</div>
+<div class="form-group"><label for="budget">Estimated Budget ($)</label> <input id="budget" min="0" name="budget" type="number" /></div>
+</div>
+</div>
+
+<!-- Section 3: Services -->
+<div class="form-section" id="section3" style="display: none;">
+<h2>Services You're Interested In</h2>
+<p>Select all that apply:</p>
+<div class="service-icons">
+<div class="service-icon" data-service="landscape"><i class="fas fa-mountain"></i><span>Landscape Design</span></div>
+<div class="service-icon" data-service="irrigation"><i class="fas fa-tint"></i><span>Irrigation Repair & Service</span></div>
+<div class="service-icon" data-service="maintenance"><i class="fas fa-leaf"></i><span>Commercial Maintenance</span></div>
+<div class="service-icon" data-service="mowing"><i class="fas fa-cut"></i><span>Lawn Care & Mowing</span></div>
+<div class="service-icon" data-service="fertilization"><i class="fas fa-seedling"></i><span>Fertilization & Weed Control</span></div>
+<div class="service-icon" data-service="cleanup"><i class="fas fa-broom"></i><span>Yard Cleanup</span></div>
+<div class="service-icon" data-service="lighting"><i class="fas fa-lightbulb"></i><span>Low Volt Lighting</span></div>
+<div class="service-icon" data-service="snow"><i class="fas fa-snowflake"></i><span>Commercial Snow Removal</span></div>
+</div>
+<div style="display: none;">
+<input id="landscape" name="services" type="checkbox" value="landscape" />
+<input id="irrigation" name="services" type="checkbox" value="irrigation" />
+<input id="maintenance" name="services" type="checkbox" value="maintenance" />
+<input id="mowing" name="services" type="checkbox" value="mowing" />
+<input id="fertilization" name="services" type="checkbox" value="fertilization" />
+<input id="cleanup" name="services" type="checkbox" value="cleanup" />
+<input id="lighting" name="services" type="checkbox" value="lighting" />
+<input id="snow" name="services" type="checkbox" value="snow" />
+</div>
+<div class="form-row"><div class="form-group full-width">
+<label for="additionalComments">Additional Comments or Questions</label>
+<textarea id="additionalComments" name="additionalComments"></textarea>
+</div></div>
+</div>
+
+<!-- Section 4: Contact -->
+<div class="form-section" id="section4" style="display: none;">
+<h2>Contact Information</h2>
+<div class="form-row">
+<div class="form-group"><label class="required" for="firstName">First Name</label> <input id="firstName" name="firstName" required type="text" /></div>
+<div class="form-group"><label class="required" for="lastName">Last Name</label> <input id="lastName" name="lastName" required type="text" /></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label class="required" for="email">Email Address</label> <input id="email" name="email" required type="email" /></div>
+<div class="form-group"><label class="required" for="phone">Phone Number</label> <input id="phone" name="phone" required type="tel" /></div>
+</div>
+<div class="form-row"><div class="form-group full-width"><label for="address">Address</label> <input id="address" name="address" type="text" /></div></div>
+<div class="form-row">
+<div class="form-group"><label for="city">City</label> <input id="city" name="city" type="text" /></div>
+<div class="form-group"><label for="state">State</label> <input id="state" name="state" type="text" /></div>
+</div>
+<div class="form-row"><div class="form-group full-width"><label>How did you hear about us?</label>
+<div class="radio-group">
+<div class="radio-option"><input id="referral" name="referralSource" type="radio" value="referral" /> <label for="referral">Referral</label></div>
+<div class="radio-option"><input id="search" name="referralSource" type="radio" value="search" /> <label for="search">Search Engine</label></div>
+<div class="radio-option"><input id="social" name="referralSource" type="radio" value="social" /> <label for="social">Social Media</label></div>
+<div class="radio-option"><input id="ad" name="referralSource" type="radio" value="ad" /> <label for="ad">Advertisement</label></div>
+<div class="radio-option"><input id="other" name="referralSource" type="radio" value="other" /> <label for="other">Other</label></div>
+</div>
+</div></div>
+<div class="form-row"><div class="form-group full-width"><div class="checkbox-option">
+<input id="termsAgreement" name="termsAgreement" required type="checkbox" /> <label class="required" for="termsAgreement">I agree to be contacted by Landscapes Unlimited</label>
+</div></div></div>
+</div>
+
+<div class="nav-buttons">
+<button id="prevBtn" style="display: none;" type="button">Previous</button>
+<button id="nextBtn" type="button">Next</button>
+<button id="submitBtn" style="display: none;" type="submit">Submit Information</button>
+</div>
+</form>
+</div>
+
+<script>
+let currentSection = 1;
+const totalSections = 4;
+const form = document.getElementById('clientForm');
+const nextBtn = document.getElementById('nextBtn');
+const prevBtn = document.getElementById('prevBtn');
+const submitBtn = document.getElementById('submitBtn');
+const progressFill = document.getElementById('progressFill');
+const yardSizeSlider = document.getElementById('yardSize');
+const yardSizeValue = document.getElementById('yardSizeValue');
+
+yardSizeSlider.addEventListener('input', function() {
+    const value = this.value;
+    let displayValue = Number(value).toLocaleString();
+    yardSizeValue.textContent = value >= 20000 ? "20,000+ sq ft" : displayValue + " sq ft";
+    const percentage = ((this.value - this.min) / (this.max - this.min)) * 100;
+    this.style.background = `linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) ${percentage}%, var(--progress-inactive) ${percentage}%, var(--progress-inactive) 100%)`;
+});
+
+window.addEventListener('load', function() {
+    const percentage = ((yardSizeSlider.value - yardSizeSlider.min) / (yardSizeSlider.max - yardSizeSlider.min)) * 100;
+    yardSizeSlider.style.background = `linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) ${percentage}%, var(--progress-inactive) ${percentage}%, var(--progress-inactive) 100%)`;
+});
+
+document.querySelectorAll('.service-icon').forEach(icon => {
+    icon.addEventListener('click', function() {
+        const service = this.getAttribute('data-service');
+        const checkbox = document.getElementById(service);
+        this.classList.toggle('selected');
+        checkbox.checked = this.classList.contains('selected');
+    });
+});
+
+function updateProgress() {
+    const progressPercentage = ((currentSection - 1) / (totalSections - 1)) * 100;
+    progressFill.style.width = `${progressPercentage}%`;
+    for (let i = 1; i <= totalSections; i++) {
+        const step = document.getElementById(`step${i}`);
+        if (i <= currentSection) step.classList.add('active');
+        else step.classList.remove('active');
+    }
+}
+
+nextBtn.addEventListener('click', function() {
+    if (!validateSection(currentSection)) return;
+    document.getElementById(`section${currentSection}`).style.display = 'none';
+    currentSection++;
+    document.getElementById(`section${currentSection}`).style.display = 'block';
+    updateProgress();
+    prevBtn.style.display = 'block';
+    if (currentSection === totalSections) { nextBtn.style.display = 'none'; submitBtn.style.display = 'block'; }
+});
+
+prevBtn.addEventListener('click', function() {
+    document.getElementById(`section${currentSection}`).style.display = 'none';
+    currentSection--;
+    document.getElementById(`section${currentSection}`).style.display = 'block';
+    updateProgress();
+    nextBtn.style.display = 'block';
+    submitBtn.style.display = 'none';
+    if (currentSection === 1) prevBtn.style.display = 'none';
+});
+
+function validateSection(sectionNumber) {
+    const section = document.getElementById(`section${sectionNumber}`);
+    const requiredFields = section.querySelectorAll('[required]');
+    let valid = true;
+    requiredFields.forEach(field => {
+        if (!field.value && field.type !== 'checkbox') {
+            valid = false;
+            field.style.borderColor = 'var(--error-color)';
+            let errorMsg = field.nextElementSibling;
+            if (!errorMsg || !errorMsg.classList.contains('error-message')) {
+                errorMsg = document.createElement('div');
+                errorMsg.classList.add('error-message');
+                errorMsg.style.color = 'var(--error-color)';
+                errorMsg.style.fontSize = '0.875rem';
+                errorMsg.style.marginTop = '0.25rem';
+                errorMsg.textContent = 'This field is required';
+                field.parentNode.insertBefore(errorMsg, field.nextSibling);
+            }
+        } else if (field.type === 'checkbox' && !field.checked) {
+            valid = false;
+            field.style.outline = '2px solid var(--error-color)';
+        } else {
+            field.style.borderColor = 'var(--border-color)';
+            field.style.outline = '';
+            const errorMsg = field.nextElementSibling;
+            if (errorMsg && errorMsg.classList.contains('error-message')) errorMsg.remove();
+        }
+    });
+    return valid;
+}
+
+// ─── FORM SUBMISSION VIA RESEND (server endpoint) ────────────────
+form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!validateSection(currentSection)) return;
+
+    const formData = new FormData(this);
+    const formValues = {};
+
+    // Handle multiple checkbox values (services)
+    const services = formData.getAll('services');
+    for (let [key, value] of formData.entries()) {
+        if (key === 'services') continue; // handled separately
+        formValues[key] = value;
+    }
+    if (services.length > 0) formValues.services = services;
+
+    submitBtn.textContent = 'Submitting...';
+    submitBtn.disabled = true;
+
+    fetch('/api/send-form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formData: formValues })
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+    })
+    .then(data => {
+        console.log('Form submitted successfully:', data);
+        const container = document.querySelector('.container');
+        const formContent = container.innerHTML;
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem 1rem;">
+                <div style="font-size: 4rem; color: var(--accent-color); margin-bottom: 1rem;">✓</div>
+                <h2 style="color: var(--primary-color); margin-bottom: 1rem;">Thank You!</h2>
+                <p style="margin-bottom: 2rem;">Your information has been submitted successfully. We will contact you shortly.</p>
+                <button type="button" id="newFormBtn">Submit Another Form</button>
+            </div>
+        `;
+        document.getElementById('newFormBtn').addEventListener('click', function() {
+            container.innerHTML = formContent;
+            currentSection = 1;
+            document.querySelectorAll('.form-section').forEach((section, index) => {
+                section.style.display = index === 0 ? 'block' : 'none';
+            });
+            document.getElementById('clientForm').reset();
+            document.getElementById('prevBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'block';
+            document.getElementById('submitBtn').style.display = 'none';
+            updateProgress();
+        });
+    })
+    .catch(error => {
+        console.error('Error submitting form:', error);
+        submitBtn.textContent = 'Submit Information';
+        submitBtn.disabled = false;
+        alert('There was a problem submitting your form. Please try again or contact us directly.');
+    });
+});
+</script>
+</body>
+</html>

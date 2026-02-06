@@ -7,13 +7,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── CONFIGURATION ───────────────────────────────────────────────
-// Set your Resend API key as an environment variable:
-//   export RESEND_API_KEY=re_yourKeyHere
-//
-// Set your verified "From" domain/email in Resend dashboard first.
-// ──────────────────────────────────────────────────────────────────
+// All secrets are set as environment variables in Railway
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const resend = new Resend(process.env.RESEND_API_KEY || 're_H7XhdSnZ_8bKmw8ApEqVsT1WLx18RbtsZ');
+// Airtable config
+const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
+const AIRTABLE_TABLE_ID = process.env.AIRTABLE_TABLE_ID;
 
 const RECIPIENTS = [
   'rafael@jrcopier.com',
@@ -25,49 +25,97 @@ const RECIPIENTS = [
   'design@mmcreate.com',
 ];
 
-// Update this to your verified sender in Resend
 const FROM_EMAIL = 'Landscapes Unlimited <noreply@webleadsnow.com>';
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ─── Build a nicely formatted HTML email ─────────────────────────
+// ─── Label mappings ──────────────────────────────────────────────
+const serviceLabels = {
+  landscape: 'Landscape Design',
+  irrigation: 'Irrigation Repair & Service',
+  maintenance: 'Commercial Maintenance',
+  mowing: 'Lawn Care & Mowing',
+  fertilization: 'Fertilization & Weed Control',
+  cleanup: 'Yard Cleanup',
+  lighting: 'Low Volt Lighting',
+  snow: 'Commercial Snow Removal',
+};
+
+const projectTypes = {
+  new: 'New Landscape',
+  renovation: 'Landscape Renovation',
+  maintenance: 'Ongoing Maintenance',
+  seasonal: 'Seasonal Service',
+  other: 'Other',
+};
+
+const timelineLabels = {
+  immediate: 'Immediate (0-1 month)',
+  soon: 'Soon (1-3 months)',
+  future: 'Future (3-6 months)',
+  planning: 'Just Planning (6+ months)',
+};
+
+const referralLabels = {
+  referral: 'Referral',
+  search: 'Search Engine',
+  social: 'Social Media',
+  ad: 'Advertisement',
+  other: 'Other',
+};
+
+// ─── Send to Airtable ────────────────────────────────────────────
+async function sendToAirtable(formData) {
+  const services = [];
+  if (formData.services) {
+    const svcArray = Array.isArray(formData.services) ? formData.services : [formData.services];
+    svcArray.forEach((s) => services.push(serviceLabels[s] || s));
+  }
+
+  const fields = {
+    'Name': `${formData.firstName || ''} ${formData.lastName || ''}`.trim(),
+    'Email': formData.email || '',
+    'Phone': formData.phone || '',
+    'ZIP Code': formData.zipCode || '',
+    'Address': [formData.address, formData.city, formData.state].filter(Boolean).join(', '),
+    'Project Type': projectTypes[formData.projectType] || formData.projectType || '',
+    'Project Description': formData.projectDescription || '',
+    'Yard Size': formData.yardSize ? `${Number(formData.yardSize).toLocaleString()} sq ft` : '',
+    'Timeline': timelineLabels[formData.timeline] || formData.timeline || '',
+    'Budget': formData.budget || '',
+    'Services': services.join(', '),
+    'Financing Interest': formData.financingInfo === 'yes' ? 'Yes' : 'No',
+    'Referral Source': referralLabels[formData.referralSource] || formData.referralSource || '',
+    'Additional Comments': formData.additionalComments || '',
+    'Submitted At': new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }),
+  };
+
+  const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_ID}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ records: [{ fields }] }),
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`Airtable error: ${response.status} — ${errBody}`);
+  }
+
+  return await response.json();
+}
+
+// ─── Build HTML email ────────────────────────────────────────────
 function buildEmailHtml(formData) {
   const services = [];
   if (formData.services) {
-    const svcArray = Array.isArray(formData.services)
-      ? formData.services
-      : [formData.services];
+    const svcArray = Array.isArray(formData.services) ? formData.services : [formData.services];
     svcArray.forEach((s) => services.push(s));
   }
-
-  const serviceLabels = {
-    landscape: 'Landscape Design',
-    irrigation: 'Irrigation Repair & Service',
-    maintenance: 'Commercial Maintenance',
-    mowing: 'Lawn Care & Mowing',
-    fertilization: 'Fertilization & Weed Control',
-    cleanup: 'Yard Cleanup',
-    lighting: 'Low Volt Lighting',
-    snow: 'Commercial Snow Removal',
-  };
-
-  const projectTypes = {
-    new: 'New Landscape',
-    renovation: 'Landscape Renovation',
-    maintenance: 'Ongoing Maintenance',
-    seasonal: 'Seasonal Service',
-    other: 'Other',
-  };
-
-  const referralLabels = {
-    referral: 'Referral',
-    search: 'Search Engine',
-    social: 'Social Media',
-    ad: 'Advertisement',
-    other: 'Other',
-  };
 
   const row = (label, value) =>
     value
@@ -85,7 +133,6 @@ function buildEmailHtml(formData) {
     </div>
 
     <div style="padding:24px;">
-      <!-- Contact Info -->
       <h2 style="color:#1c4e18;font-size:16px;border-bottom:2px solid #31761f;padding-bottom:6px;margin-bottom:12px;">Contact Information</h2>
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
         ${row('Name', `${formData.firstName || ''} ${formData.lastName || ''}`)}
@@ -95,18 +142,16 @@ function buildEmailHtml(formData) {
         ${row('Referral Source', referralLabels[formData.referralSource] || formData.referralSource || '—')}
       </table>
 
-      <!-- Project Info -->
       <h2 style="color:#1c4e18;font-size:16px;border-bottom:2px solid #31761f;padding-bottom:6px;margin-bottom:12px;">Project Details</h2>
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
         ${row('Project Type', projectTypes[formData.projectType] || formData.projectType || '—')}
         ${row('Description', formData.projectDescription)}
         ${row('Yard Size', formData.yardSize ? `${Number(formData.yardSize).toLocaleString()} sq ft` : '—')}
-        ${row('Timeline', formData.timeline || '—')}
+        ${row('Timeline', timelineLabels[formData.timeline] || formData.timeline || '—')}
         ${row('Budget', formData.budget ? `$${Number(formData.budget).toLocaleString()}` : '—')}
         ${row('Financing Interest', formData.financingInfo === 'yes' ? '✅ Yes' : 'No')}
       </table>
 
-      <!-- Services -->
       <h2 style="color:#1c4e18;font-size:16px;border-bottom:2px solid #31761f;padding-bottom:6px;margin-bottom:12px;">Services Requested</h2>
       ${
         services.length > 0
@@ -132,27 +177,44 @@ app.post('/api/send-form', async (req, res) => {
       return res.status(400).json({ error: 'Missing form data' });
     }
 
-    const htmlContent = buildEmailHtml(formData);
-    const clientName = `${formData.firstName || ''} ${formData.lastName || ''}`.trim();
-
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: RECIPIENTS,
-      subject: `New Client Form: ${clientName || 'Unknown'} — ${formData.zipCode || 'No ZIP'}`,
-      html: htmlContent,
-      // Optional: send a confirmation copy to the client
-      ...(formData.email && {
-        replyTo: formData.email,
+    // Send email and log to Airtable in parallel
+    const [emailResult, airtableResult] = await Promise.allSettled([
+      resend.emails.send({
+        from: FROM_EMAIL,
+        to: RECIPIENTS,
+        subject: `New Client Form: ${`${formData.firstName || ''} ${formData.lastName || ''}`.trim() || 'Unknown'} — ${formData.zipCode || 'No ZIP'}`,
+        html: buildEmailHtml(formData),
+        ...(formData.email && { replyTo: formData.email }),
       }),
-    });
+      sendToAirtable(formData),
+    ]);
 
-    if (error) {
-      console.error('Resend error:', error);
-      return res.status(500).json({ error: 'Failed to send email', details: error });
+    // Log results
+    if (emailResult.status === 'fulfilled') {
+      if (emailResult.value.error) {
+        console.error('Resend error:', emailResult.value.error);
+      } else {
+        console.log('Email sent:', emailResult.value.data?.id);
+      }
+    } else {
+      console.error('Email failed:', emailResult.reason);
     }
 
-    console.log('Email sent successfully:', data);
-    return res.json({ success: true, messageId: data.id });
+    if (airtableResult.status === 'fulfilled') {
+      console.log('Airtable record created:', airtableResult.value?.records?.[0]?.id);
+    } else {
+      console.error('Airtable failed:', airtableResult.reason);
+    }
+
+    // Respond success if at least one worked
+    const emailOk = emailResult.status === 'fulfilled' && !emailResult.value.error;
+    const airtableOk = airtableResult.status === 'fulfilled';
+
+    if (emailOk || airtableOk) {
+      return res.json({ success: true, email: emailOk, airtable: airtableOk });
+    } else {
+      return res.status(500).json({ error: 'Both email and Airtable failed' });
+    }
   } catch (err) {
     console.error('Server error:', err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -161,5 +223,4 @@ app.post('/api/send-form', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log('Make sure RESEND_API_KEY is set in your environment.');
 });

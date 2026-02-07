@@ -7,7 +7,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── CONFIGURATION ───────────────────────────────────────────────
-// Lazy-init Resend so server starts even if key isn't set yet
 let resend;
 function getResend() {
   if (!resend) {
@@ -156,8 +155,8 @@ async function sendToCRM(formData) {
   const response = await fetch(CRM_WEBHOOK_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${CRM_API_KEY}`,
       'Content-Type': 'application/json',
+      'X-API-Key': CRM_API_KEY,
     },
     body: JSON.stringify(payload),
   });

@@ -7,7 +7,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── CONFIGURATION ───────────────────────────────────────────────
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-init Resend so server starts even if key isn't set yet
+let resend;
+function getResend() {
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY || 'missing_key');
+  }
+  return resend;
+}
 
 // Airtable config
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
@@ -222,3 +229,70 @@ function buildEmailHtml(formData) {
   </div>`;
 }
 
+// ─── API Endpoint ────────────────────────────────────────────────
+app.post('/api/send-form', async (req, res) => {
+  try {
+    const { formData } = req.body;
+
+    if (!formData) {
+      return res.status(400).json({ error: 'Missing form data' });
+    }
+
+    // Send email, log to Airtable, and push to CRM in parallel
+    const [emailResult, airtableResult, crmResult] = await Promise.allSettled([
+      getResend().emails.send({
+        from: FROM_EMAIL,
+        to: RECIPIENTS,
+        subject: `New Client Form: ${`${formData.firstName || ''} ${formData.lastName || ''}`.trim() || 'Unknown'} — ${formData.zipCode || 'No ZIP'}`,
+        html: buildEmailHtml(formData),
+        ...(formData.email && { replyTo: formData.email }),
+      }),
+      sendToAirtable(formData),
+      sendToCRM(formData),
+    ]);
+
+    // Log results
+    if (emailResult.status === 'fulfilled') {
+      if (emailResult.value.error) {
+        console.error('Resend error:', emailResult.value.error);
+      } else {
+        console.log('Email sent:', emailResult.value.data?.id);
+      }
+    } else {
+      console.error('Email failed:', emailResult.reason);
+    }
+
+    if (airtableResult.status === 'fulfilled') {
+      console.log('Airtable record created:', airtableResult.value?.records?.[0]?.id);
+    } else {
+      console.error('Airtable failed:', airtableResult.reason);
+    }
+
+    if (crmResult.status === 'fulfilled') {
+      console.log('CRM webhook sent successfully');
+    } else {
+      console.error('CRM webhook failed:', crmResult.reason);
+    }
+
+    // Respond success if at least one worked
+    const emailOk = emailResult.status === 'fulfilled' && !emailResult.value.error;
+    const airtableOk = airtableResult.status === 'fulfilled';
+    const crmOk = crmResult.status === 'fulfilled';
+
+    if (emailOk || airtableOk || crmOk) {
+      return res.json({ success: true, email: emailOk, airtable: airtableOk, crm: crmOk });
+    } else {
+      return res.status(500).json({ error: 'All integrations failed' });
+    }
+  } catch (err) {
+    console.error('Server error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? 'SET' : 'MISSING');
+  console.log('AIRTABLE_TOKEN:', process.env.AIRTABLE_TOKEN ? 'SET' : 'MISSING');
+  console.log('CRM_API_KEY:', process.env.CRM_API_KEY ? 'SET' : 'MISSING');
+});

@@ -7,13 +7,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── CONFIGURATION ───────────────────────────────────────────────
-// All secrets are set as environment variables in Railway
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Airtable config
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE_ID = process.env.AIRTABLE_TABLE_ID;
+
+// CRM Webhook config
+const CRM_WEBHOOK_URL = process.env.CRM_WEBHOOK_URL;
+const CRM_API_KEY = process.env.CRM_API_KEY;
 
 const RECIPIENTS = [
   'rafael@jrcopier.com',
@@ -109,6 +112,57 @@ async function sendToAirtable(formData) {
   return await response.json();
 }
 
+// ─── Send to CRM Webhook ────────────────────────────────────────
+async function sendToCRM(formData) {
+  const services = [];
+  if (formData.services) {
+    const svcArray = Array.isArray(formData.services) ? formData.services : [formData.services];
+    svcArray.forEach((s) => services.push(serviceLabels[s] || s));
+  }
+
+  const payload = {
+    source: 'landscapes-unlimited-form',
+    submitted_at: new Date().toISOString(),
+    contact: {
+      first_name: formData.firstName || '',
+      last_name: formData.lastName || '',
+      email: formData.email || '',
+      phone: formData.phone || '',
+      address: formData.address || '',
+      city: formData.city || '',
+      state: formData.state || '',
+      zip_code: formData.zipCode || '',
+    },
+    project: {
+      type: projectTypes[formData.projectType] || formData.projectType || '',
+      description: formData.projectDescription || '',
+      yard_size: formData.yardSize ? `${Number(formData.yardSize).toLocaleString()} sq ft` : '',
+      timeline: timelineLabels[formData.timeline] || formData.timeline || '',
+      budget: formData.budget || '',
+      services: services,
+      financing_interest: formData.financingInfo === 'yes',
+    },
+    referral_source: referralLabels[formData.referralSource] || formData.referralSource || '',
+    additional_comments: formData.additionalComments || '',
+  };
+
+  const response = await fetch(CRM_WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${CRM_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`CRM webhook error: ${response.status} — ${errBody}`);
+  }
+
+  return await response.json();
+}
+
 // ─── Build HTML email ────────────────────────────────────────────
 function buildEmailHtml(formData) {
   const services = [];
@@ -168,59 +222,3 @@ function buildEmailHtml(formData) {
   </div>`;
 }
 
-// ─── API Endpoint ────────────────────────────────────────────────
-app.post('/api/send-form', async (req, res) => {
-  try {
-    const { formData } = req.body;
-
-    if (!formData) {
-      return res.status(400).json({ error: 'Missing form data' });
-    }
-
-    // Send email and log to Airtable in parallel
-    const [emailResult, airtableResult] = await Promise.allSettled([
-      resend.emails.send({
-        from: FROM_EMAIL,
-        to: RECIPIENTS,
-        subject: `New Client Form: ${`${formData.firstName || ''} ${formData.lastName || ''}`.trim() || 'Unknown'} — ${formData.zipCode || 'No ZIP'}`,
-        html: buildEmailHtml(formData),
-        ...(formData.email && { replyTo: formData.email }),
-      }),
-      sendToAirtable(formData),
-    ]);
-
-    // Log results
-    if (emailResult.status === 'fulfilled') {
-      if (emailResult.value.error) {
-        console.error('Resend error:', emailResult.value.error);
-      } else {
-        console.log('Email sent:', emailResult.value.data?.id);
-      }
-    } else {
-      console.error('Email failed:', emailResult.reason);
-    }
-
-    if (airtableResult.status === 'fulfilled') {
-      console.log('Airtable record created:', airtableResult.value?.records?.[0]?.id);
-    } else {
-      console.error('Airtable failed:', airtableResult.reason);
-    }
-
-    // Respond success if at least one worked
-    const emailOk = emailResult.status === 'fulfilled' && !emailResult.value.error;
-    const airtableOk = airtableResult.status === 'fulfilled';
-
-    if (emailOk || airtableOk) {
-      return res.json({ success: true, email: emailOk, airtable: airtableOk });
-    } else {
-      return res.status(500).json({ error: 'Both email and Airtable failed' });
-    }
-  } catch (err) {
-    console.error('Server error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});

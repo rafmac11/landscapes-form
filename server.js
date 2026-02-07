@@ -7,22 +7,18 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── CONFIGURATION ───────────────────────────────────────────────
-let resend;
-function getResend() {
-  if (!resend) {
-    resend = new Resend(process.env.RESEND_API_KEY || 'missing_key');
-  }
-  return resend;
-}
+// All secrets are set as environment variables in Railway
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Airtable config
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE_ID = process.env.AIRTABLE_TABLE_ID;
 
-// CRM Webhook config
+// CRM Webhook config (SureLeadsFlow)
 const CRM_WEBHOOK_URL = process.env.CRM_WEBHOOK_URL;
 const CRM_API_KEY = process.env.CRM_API_KEY;
+const CRM_FORM_ID = process.env.CRM_FORM_ID || 'f0ab7b0c-54b0-4473-b8f4-b91c4d41d07f';
 
 const RECIPIENTS = [
   'rafael@jrcopier.com',
@@ -39,6 +35,12 @@ const FROM_EMAIL = 'Landscapes Unlimited <noreply@webleadsnow.com>';
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Remove X-Frame-Options so form can be embedded in iframes
+app.use((req, res, next) => {
+  res.removeHeader('X-Frame-Options');
+  next();
+});
 
 // ─── Label mappings ──────────────────────────────────────────────
 const serviceLabels = {
@@ -118,8 +120,12 @@ async function sendToAirtable(formData) {
   return await response.json();
 }
 
-// ─── Send to CRM Webhook ────────────────────────────────────────
+// ─── Send to CRM (SureLeadsFlow) ────────────────────────────────
 async function sendToCRM(formData) {
+  if (!CRM_WEBHOOK_URL || !CRM_API_KEY) {
+    throw new Error('CRM webhook not configured');
+  }
+
   const services = [];
   if (formData.services) {
     const svcArray = Array.isArray(formData.services) ? formData.services : [formData.services];
@@ -127,29 +133,24 @@ async function sendToCRM(formData) {
   }
 
   const payload = {
-    source: 'landscapes-unlimited-form',
-    submitted_at: new Date().toISOString(),
-    contact: {
-      first_name: formData.firstName || '',
-      last_name: formData.lastName || '',
+    form_id: CRM_FORM_ID,
+    lead: {
+      name: `${formData.firstName || ''} ${formData.lastName || ''}`.trim(),
       email: formData.email || '',
       phone: formData.phone || '',
-      address: formData.address || '',
-      city: formData.city || '',
-      state: formData.state || '',
       zip_code: formData.zipCode || '',
-    },
-    project: {
-      type: projectTypes[formData.projectType] || formData.projectType || '',
-      description: formData.projectDescription || '',
+      address: [formData.address, formData.city, formData.state].filter(Boolean).join(', '),
+      project_type: projectTypes[formData.projectType] || formData.projectType || '',
+      project_description: formData.projectDescription || '',
       yard_size: formData.yardSize ? `${Number(formData.yardSize).toLocaleString()} sq ft` : '',
       timeline: timelineLabels[formData.timeline] || formData.timeline || '',
-      budget: formData.budget || '',
-      services: services,
-      financing_interest: formData.financingInfo === 'yes',
+      budget: formData.budget ? `$${Number(formData.budget).toLocaleString()}` : '',
+      services: services.join(', '),
+      financing_interest: formData.financingInfo === 'yes' ? 'Yes' : 'No',
+      referral_source: referralLabels[formData.referralSource] || formData.referralSource || '',
+      additional_comments: formData.additionalComments || '',
+      page_url: formData.pageUrl || '',
     },
-    referral_source: referralLabels[formData.referralSource] || formData.referralSource || '',
-    additional_comments: formData.additionalComments || '',
   };
 
   const response = await fetch(CRM_WEBHOOK_URL, {
@@ -237,9 +238,9 @@ app.post('/api/send-form', async (req, res) => {
       return res.status(400).json({ error: 'Missing form data' });
     }
 
-    // Send email, log to Airtable, and push to CRM in parallel
+    // Send email, Airtable, and CRM in parallel
     const [emailResult, airtableResult, crmResult] = await Promise.allSettled([
-      getResend().emails.send({
+      resend.emails.send({
         from: FROM_EMAIL,
         to: RECIPIENTS,
         subject: `New Client Form: ${`${formData.firstName || ''} ${formData.lastName || ''}`.trim() || 'Unknown'} — ${formData.zipCode || 'No ZIP'}`,
@@ -270,7 +271,7 @@ app.post('/api/send-form', async (req, res) => {
     if (crmResult.status === 'fulfilled') {
       console.log('CRM webhook sent successfully');
     } else {
-      console.error('CRM webhook failed:', crmResult.reason);
+      console.error('CRM failed:', crmResult.reason);
     }
 
     // Respond success if at least one worked
@@ -291,7 +292,4 @@ app.post('/api/send-form', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? 'SET' : 'MISSING');
-  console.log('AIRTABLE_TOKEN:', process.env.AIRTABLE_TOKEN ? 'SET' : 'MISSING');
-  console.log('CRM_API_KEY:', process.env.CRM_API_KEY ? 'SET' : 'MISSING');
 });

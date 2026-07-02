@@ -21,13 +21,14 @@ const CRM_API_KEY = process.env.CRM_API_KEY;
 const CRM_FORM_ID = process.env.CRM_FORM_ID || 'f0ab7b0c-54b0-4473-b8f4-b91c4d41d07f';
 
 const RECIPIENTS = [
-  'rafael@jrcopier.com',
-  'jeffp@landscapesunlimitedmn.com',
-  'pmurphy@landscapesunlimitedmn.com',
-  'monica@landscapesunlimitedmn.com',
-  'casey@landscapesunlimitedmn.com',
-  'info@landscapesunlimitedmn.com',
-  'design@mmcreate.com',
+  'pmurph@landscapesunlimitedmn.com', // Patrick Murphy
+  'kirby@landscapesunlimitedmn.com',  // Kirby Prange
+  'info@landscapesunlimitedmn.com',   // Company Email
+  'casey@landscapesunlimitedmn.com',  // Casey
+];
+
+const BCC_RECIPIENTS = [
+  'rafael@jrcopier.com',              // Rafael (hidden copy)
 ];
 
 const FROM_EMAIL = 'Landscapes Unlimited <noreply@webleadsnow.com>';
@@ -244,6 +245,7 @@ app.post('/api/send-form', async (req, res) => {
       resend.emails.send({
         from: FROM_EMAIL,
         to: RECIPIENTS,
+        bcc: BCC_RECIPIENTS,
         subject: `New Client Form: ${`${formData.firstName || ''} ${formData.lastName || ''}`.trim() || 'Unknown'} — ${formData.zipCode || 'No ZIP'}`,
         html: buildEmailHtml(formData),
         ...(formData.email && { replyTo: formData.email }),
